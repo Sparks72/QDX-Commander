@@ -81,7 +81,7 @@ The QRP Labs QDX is a high-performance, four-band 5W digital modes transceiver f
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/yourusername/qdx-commander.git
+   git clone https://github.com/sparks72/qdx-commander.git
    cd qdx-commander
    ```
 
