@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QRP-Labs QDX Commander</title>
+    <title>QRP-Labs QDX Commander with Digital Audio by DJ0CU/G4ADF</title>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 	
 	<style>
@@ -907,6 +907,56 @@
             text-shadow: 0 0 3px rgba(255, 107, 53, 0.8);
         }
 
+        /* Audio Processing Panel Styles */
+        .audio-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .fft-canvas {
+            width: 100%;
+            height: 150px;
+            background: #000;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .waterfall-canvas {
+            width: 100%;
+            height: 200px;
+            background: #000;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .audio-indicator {
+            height: 20px;
+            background: #222;
+            border-radius: 10px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .audio-level {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b35, #f7931e);
+            border-radius: 10px;
+            transition: width 0.1s ease;
+            width: 0%;
+        }
+
+        .audio-status {
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            color: #ff6b35;
+            margin: 5px 0;
+        }
+
         @media (max-width: 768px) {
             .volume-knob-container {
                 width: 60px;
@@ -921,8 +971,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>QRP-Labs QDX Commander by DJ0CU/G4ADF</h1>
-            <p>QRP Digital Communications Interface</p>
+            <h1>QRP-Labs QDX Commander with Digital Audio by DJ0CU/G4ADF</h1>
+            <p>QRP Digital Communications Interface with Real-Time Audio Processing</p>
         </div>
 
         <div class="main-panel">
@@ -942,6 +992,35 @@
                     <div class="control-group">
                         <button id="connectBtn" class="btn btn-primary">Connect Serial</button>
                     </div>
+                </div>
+
+                <div class="panel" id="audioPanel">
+                    <h3>Digital Audio</h3>
+                    <div class="audio-controls">
+                        <button id="startAudioBtn" class="btn btn-primary">Start Audio</button>
+                        <button id="stopAudioBtn" class="btn btn-secondary">Stop Audio</button>
+                        <button id="testAudioBtn" class="btn btn-secondary" style="grid-column: span 2; margin-top: 10px;">Test Audio System</button>
+                    </div>
+                    <div class="control-group">
+                        <label>Sample Rate</label>
+                        <select id="sampleRate">
+                            <option value="8000">8 kHz</option>
+                            <option value="12000">12 kHz</option>
+                            <option value="16000">16 kHz</option>
+                            <option value="22050">22.05 kHz</option>
+                            <option value="44100">44.1 kHz</option>
+                            <option value="48000" selected>48 kHz</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Audio Output</label>
+                        <input type="range" id="audioVolumeSlider" class="slider" min="0" max="100" value="50">
+                        <span id="audioVolumeLevel">50%</span>
+                    </div>
+                    <div class="audio-indicator">
+                        <div class="audio-level" id="audioLevel"></div>
+                    </div>
+                    <div class="audio-status" id="audioStatus">Select QDX Audio Device</div>
                 </div>
 
                 <div class="panel" id="modePanel">
@@ -1002,6 +1081,20 @@
                     </div>
                 </div>
 
+                <div class="panel" id="spectrumPanel">
+                    <h3>Spectrum Display</h3>
+                    <canvas class="fft-canvas" id="fftCanvas" width="400" height="150"></canvas>
+                    <div class="control-group">
+                        <label>FFT Size</label>
+                        <select id="fftSize">
+                            <option value="256">256</option>
+                            <option value="512">512</option>
+                            <option value="1024" selected>1024</option>
+                            <option value="2048">2048</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="panel" id="vfoPanel">
                     <h3>VFO</h3>
                     <div class="controls-grid">
@@ -1020,6 +1113,15 @@
             </div>
 
             <div class="right-panel">
+                <div class="panel" id="waterfallPanel">
+                    <h3>Waterfall Display</h3>
+                    <canvas class="waterfall-canvas" id="waterfallCanvas" width="400" height="200"></canvas>
+                    <div class="control-group">
+                        <label>Speed</label>
+                        <input type="range" id="waterfallSpeed" class="slider" min="1" max="10" value="1">
+                    </div>
+                </div>
+
                 <div class="panel" id="controlsPanel">
                     <h3>Controls</h3>
                     <div class="knobs-row">
@@ -1124,7 +1226,7 @@
                 <div class="status-dot" id="statusDot"></div>
                 <span class="status-text disconnected" id="statusText">DISCONNECTED</span>
             </div>
-            <div>QDX CAT Interface</div>
+            <div>QDX CAT Interface with Real-Time Audio</div>
             <div id="currentTime"></div>
         </div>
     </div>
@@ -1172,6 +1274,573 @@
     </div>
 
     <script>
+        class QDXAudioProcessor {
+            constructor(qdxInterface) {
+                this.qdxInterface = qdxInterface;
+                this.audioContext = null;
+                this.analyser = null;
+                this.audioBuffer = null;
+                this.gainNode = null;
+                this.fftSize = 1024;
+                this.sampleRate = 48000;
+                this.isStreaming = false;
+                this.audioVolume = 0.5;
+                this.microphone = null;
+                this.sourceNode = null;
+                
+                // Canvas elements
+                this.fftCanvas = document.getElementById('fftCanvas');
+                this.fftCtx = this.fftCanvas.getContext('2d');
+                this.waterfallCanvas = document.getElementById('waterfallCanvas');
+                this.waterfallCtx = this.waterfallCanvas.getContext('2d');
+                
+                // Waterfall display
+                this.waterfallHistory = [];
+                this.waterfallSpeed = 1; // Much slower default for SSB monitoring
+                
+                // Audio processing
+                this.animationFrame = null;
+                this.audioDevices = [];
+                this.selectedDeviceId = null;
+                
+                this.initAudioProcessing();
+                this.initEventListeners();
+                this.updateAudioButtons(); // Initialize button states
+                
+                this.qdxInterface.logCAT('QDX Audio Processor ready', 'info');
+            }
+
+            async initAudioProcessing() {
+                try {
+                    // Initialize Web Audio API
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.audioContext = new AudioContext({ sampleRate: this.sampleRate });
+                    
+                    // Create analyser node
+                    this.analyser = this.audioContext.createAnalyser();
+                    this.analyser.fftSize = this.fftSize;
+                    this.analyser.smoothingTimeConstant = 0.3;
+                    this.analyser.minDecibels = -90;
+                    this.analyser.maxDecibels = -10;
+                    
+                    // Create gain node for volume control
+                    this.gainNode = this.audioContext.createGain();
+                    this.gainNode.gain.value = this.audioVolume;
+                    
+                    // Connect analyser to speakers for monitoring
+                    this.analyser.connect(this.gainNode);
+                    this.gainNode.connect(this.audioContext.destination);
+                    
+                    console.log('Audio processing initialized');
+                    this.qdxInterface.logCAT('Web Audio API initialized successfully', 'info');
+                    
+                    // Load audio devices after a short delay to ensure DOM is ready
+                    setTimeout(() => {
+                        this.loadAudioDevices();
+                    }, 500);
+                    
+                } catch (error) {
+                    console.error('Failed to initialize audio processing:', error);
+                    this.qdxInterface.logCAT(`Audio init error: ${error.message}`, 'error');
+                }
+            }
+
+            async loadAudioDevices() {
+                try {
+                    this.qdxInterface.logCAT('Loading audio devices...', 'info');
+                    this.updateAudioStatus('Loading audio devices...');
+                    
+                    // Check if getUserMedia is available
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        throw new Error('getUserMedia not supported in this browser');
+                    }
+                    
+                    // First enumerate without permission (limited labels)
+                    let devices = await navigator.mediaDevices.enumerateDevices();
+                    let audioInputs = devices.filter(device => device.kind === 'audioinput');
+                    this.qdxInterface.logCAT(`Found ${audioInputs.length} audio devices (without permission)`, 'info');
+                    
+                    // Request permission to get device labels
+                    try {
+                        this.qdxInterface.logCAT('Requesting microphone permission for device labels...', 'info');
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        this.qdxInterface.logCAT('Permission granted! Getting device labels...', 'info');
+                        stream.getTracks().forEach(track => track.stop());
+                        
+                        // Now enumerate with labels
+                        devices = await navigator.mediaDevices.enumerateDevices();
+                        audioInputs = devices.filter(device => device.kind === 'audioinput');
+                        this.qdxInterface.logCAT(`Found ${audioInputs.length} audio devices (with labels)`, 'info');
+                        
+                    } catch (permError) {
+                        this.qdxInterface.logCAT(`Permission denied: ${permError.message}`, 'error');
+                        this.qdxInterface.logCAT('Device labels will be limited without microphone permission', 'info');
+                    }
+                    
+                    this.audioDevices = audioInputs;
+                    
+                    // Log each device
+                    audioInputs.forEach((device, index) => {
+                        const label = device.label || `Audio Device ${index + 1}`;
+                        this.qdxInterface.logCAT(`Device ${index + 1}: ${label} (${device.deviceId.slice(0,8)}...)`, 'info');
+                    });
+                    
+                    this.updateAudioDeviceSelector();
+                    this.updateAudioStatus('Audio devices loaded');
+                    
+                } catch (error) {
+                    console.error('Failed to load audio devices:', error);
+                    this.qdxInterface.logCAT(`Device enumeration failed: ${error.message}`, 'error');
+                    this.updateAudioStatus(`Device loading failed: ${error.message}`);
+                }
+            }
+
+            updateAudioDeviceSelector() {
+                try {
+                    this.qdxInterface.logCAT('Creating audio device selector...', 'info');
+                    
+                    const sampleRateGroup = document.getElementById('sampleRate')?.parentNode;
+                    if (!sampleRateGroup) {
+                        this.qdxInterface.logCAT('Cannot find sample rate element - DOM not ready', 'error');
+                        return;
+                    }
+                    
+                    const audioPanel = sampleRateGroup.parentNode;
+                    
+                    // Remove existing device selector if it exists
+                    const existingGroup = document.getElementById('audioDeviceGroup');
+                    if (existingGroup) {
+                        existingGroup.remove();
+                    }
+                    
+                    // Create device selector group
+                    const deviceGroup = document.createElement('div');
+                    deviceGroup.className = 'control-group';
+                    deviceGroup.id = 'audioDeviceGroup';
+                    
+                    const label = document.createElement('label');
+                    label.textContent = 'Audio Input Device';
+                    deviceGroup.appendChild(label);
+                    
+                    const deviceSelect = document.createElement('select');
+                    deviceSelect.id = 'audioDevice';
+                    deviceSelect.style.cssText = `
+                        padding: 10px;
+                        border: 1px solid rgba(255, 255, 255, 0.3);
+                        border-radius: 8px;
+                        background: rgba(255, 255, 255, 0.1);
+                        color: #fff;
+                        font-size: 1em;
+                        transition: all 0.3s ease;
+                        width: 100%;
+                    `;
+                    
+                    // Add default option
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = "";
+                    defaultOption.textContent = "Use Default Audio Device";
+                    deviceSelect.appendChild(defaultOption);
+                    
+                    // Add device options
+                    if (this.audioDevices && this.audioDevices.length > 0) {
+                        this.audioDevices.forEach((device, index) => {
+                            const option = document.createElement('option');
+                            option.value = device.deviceId;
+                            option.textContent = device.label || `Audio Device ${index + 1}`;
+                            deviceSelect.appendChild(option);
+                        });
+                        
+                        this.qdxInterface.logCAT(`Added ${this.audioDevices.length} devices to selector`, 'info');
+                    } else {
+                        const noDeviceOption = document.createElement('option');
+                        noDeviceOption.value = "";
+                        noDeviceOption.textContent = "No audio devices found";
+                        deviceSelect.appendChild(noDeviceOption);
+                        this.qdxInterface.logCAT('No audio devices available', 'error');
+                    }
+                    
+                    // Add change event listener
+                    deviceSelect.addEventListener('change', (e) => {
+                        this.selectedDeviceId = e.target.value;
+                        const selectedText = e.target.options[e.target.selectedIndex].text;
+                        this.qdxInterface.logCAT(`Selected audio device: ${selectedText}`, 'info');
+                    });
+                    
+                    deviceGroup.appendChild(deviceSelect);
+                    
+                    // Add refresh button
+                    const refreshBtn = document.createElement('button');
+                    refreshBtn.textContent = 'Refresh Devices';
+                    refreshBtn.className = 'btn btn-secondary';
+                    refreshBtn.style.cssText = `
+                        margin-top: 5px;
+                        padding: 5px 10px;
+                        font-size: 0.8em;
+                    `;
+                    refreshBtn.addEventListener('click', () => {
+                        this.qdxInterface.logCAT('Manually refreshing audio devices...', 'info');
+                        this.loadAudioDevices();
+                    });
+                    deviceGroup.appendChild(refreshBtn);
+                    
+                    // Insert before sample rate group
+                    audioPanel.insertBefore(deviceGroup, sampleRateGroup);
+                    
+                    this.qdxInterface.logCAT('Audio device selector created successfully', 'info');
+                    
+                } catch (error) {
+                    console.error('Failed to create device selector:', error);
+                    this.qdxInterface.logCAT(`Device selector creation failed: ${error.message}`, 'error');
+                }
+            }
+
+            initEventListeners() {
+                document.getElementById('startAudioBtn').addEventListener('click', () => {
+                    this.qdxInterface.logCAT('Start Audio button clicked', 'info');
+                    this.startAudioStreaming();
+                });
+                
+                document.getElementById('stopAudioBtn').addEventListener('click', () => {
+                    this.qdxInterface.logCAT('Stop Audio button clicked', 'info');
+                    this.stopAudioStreaming();
+                });
+                
+                document.getElementById('testAudioBtn').addEventListener('click', () => {
+                    this.testAudioSystem();
+                });
+                
+                document.getElementById('sampleRate').addEventListener('change', (e) => {
+                    this.sampleRate = parseInt(e.target.value);
+                    this.qdxInterface.logCAT(`Sample rate changed to ${this.sampleRate} Hz`, 'info');
+                });
+                
+                document.getElementById('fftSize').addEventListener('change', (e) => {
+                    this.fftSize = parseInt(e.target.value);
+                    if (this.analyser) {
+                        this.analyser.fftSize = this.fftSize;
+                    }
+                    this.qdxInterface.logCAT(`FFT size changed to ${this.fftSize}`, 'info');
+                });
+                
+                document.getElementById('audioVolumeSlider').addEventListener('input', (e) => {
+                    this.audioVolume = e.target.value / 100;
+                    document.getElementById('audioVolumeLevel').textContent = `${e.target.value}%`;
+                    if (this.gainNode) {
+                        this.gainNode.gain.value = this.audioVolume;
+                    }
+                });
+                
+                document.getElementById('waterfallSpeed').addEventListener('input', (e) => {
+                    this.waterfallSpeed = parseInt(e.target.value);
+                });
+            }
+
+            async testAudioSystem() {
+                try {
+                    this.qdxInterface.logCAT('Testing audio system...', 'info');
+                    this.updateAudioStatus('Testing Audio System...');
+                    
+                    // Test if getUserMedia is available
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        throw new Error('getUserMedia not supported in this browser');
+                    }
+                    
+                    // Test basic audio access
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    this.qdxInterface.logCAT('Audio access test: SUCCESS', 'info');
+                    
+                    // Stop the test stream
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    // Test audio context
+                    if (this.audioContext) {
+                        this.qdxInterface.logCAT(`Audio context state: ${this.audioContext.state}`, 'info');
+                        this.qdxInterface.logCAT(`Audio context sample rate: ${this.audioContext.sampleRate} Hz`, 'info');
+                    }
+                    
+                    // Test devices
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const audioInputs = devices.filter(device => device.kind === 'audioinput');
+                    this.qdxInterface.logCAT(`Found ${audioInputs.length} audio input devices`, 'info');
+                    
+                    audioInputs.forEach((device, index) => {
+                        this.qdxInterface.logCAT(`Device ${index + 1}: ${device.label || 'Unknown Device'}`, 'info');
+                    });
+                    
+                    this.updateAudioStatus('Audio System Test Complete');
+                    this.qdxInterface.logCAT('Audio system test completed successfully!', 'info');
+                    
+                } catch (error) {
+                    this.qdxInterface.logCAT(`Audio system test failed: ${error.message}`, 'error');
+                    this.updateAudioStatus(`Audio Test Failed: ${error.message}`);
+                }
+            }
+
+            async startAudioStreaming() {
+                try {
+                    this.qdxInterface.logCAT('Attempting to start audio streaming...', 'info');
+                    this.updateAudioStatus('Starting Audio...');
+
+                    // Request microphone access with specific device
+                    const constraints = {
+                        audio: {
+                            deviceId: this.selectedDeviceId ? { exact: this.selectedDeviceId } : undefined,
+                            sampleRate: this.sampleRate,
+                            channelCount: 1,
+                            autoGainControl: false,
+                            noiseSuppression: false,
+                            echoCancellation: false
+                        }
+                    };
+
+                    this.qdxInterface.logCAT(`Requesting audio access with constraints: ${JSON.stringify(constraints)}`, 'info');
+                    this.microphone = await navigator.mediaDevices.getUserMedia(constraints);
+                    this.qdxInterface.logCAT('Audio access granted', 'info');
+                    
+                    // Start audio context if suspended
+                    if (this.audioContext.state === 'suspended') {
+                        this.qdxInterface.logCAT('Resuming audio context...', 'info');
+                        await this.audioContext.resume();
+                    }
+                    
+                    // Create source node from microphone
+                    this.sourceNode = this.audioContext.createMediaStreamSource(this.microphone);
+                    
+                    // Connect source to analyser for FFT processing
+                    this.sourceNode.connect(this.analyser);
+                    
+                    this.isStreaming = true;
+                    this.updateAudioStatus('Audio Streaming - Live from QDX');
+                    this.updateAudioButtons();
+                    
+                    // Start audio processing loop
+                    this.startAudioProcessingLoop();
+                    
+                    this.qdxInterface.logCAT('Audio streaming started successfully!', 'info');
+                } catch (error) {
+                    console.error('Failed to start audio streaming:', error);
+                    this.qdxInterface.logCAT(`Audio start error: ${error.message}`, 'error');
+                    this.updateAudioStatus(`Audio Error: ${error.message}`);
+                    
+                    // Provide helpful error messages
+                    if (error.name === 'NotAllowedError') {
+                        this.qdxInterface.logCAT('Microphone permission denied. Please allow microphone access and try again.', 'error');
+                    } else if (error.name === 'NotFoundError') {
+                        this.qdxInterface.logCAT('No audio input device found. Check your QDX audio connection.', 'error');
+                    } else if (error.name === 'NotReadableError') {
+                        this.qdxInterface.logCAT('Audio device is already in use by another application.', 'error');
+                    }
+                }
+            }
+
+            async stopAudioStreaming() {
+                try {
+                    this.isStreaming = false;
+                    
+                    // Stop microphone stream
+                    if (this.microphone) {
+                        this.microphone.getTracks().forEach(track => track.stop());
+                        this.microphone = null;
+                    }
+                    
+                    // Disconnect source node
+                    if (this.sourceNode) {
+                        this.sourceNode.disconnect();
+                        this.sourceNode = null;
+                    }
+                    
+                    // Stop animation loop
+                    if (this.animationFrame) {
+                        cancelAnimationFrame(this.animationFrame);
+                        this.animationFrame = null;
+                    }
+                    
+                    this.updateAudioStatus('Select QDX Audio Device');
+                    this.updateAudioButtons();
+                    
+                    this.qdxInterface.logCAT('Audio streaming stopped', 'info');
+                } catch (error) {
+                    console.error('Failed to stop audio streaming:', error);
+                    this.qdxInterface.logCAT(`Audio stop error: ${error.message}`, 'error');
+                }
+            }
+
+            startAudioProcessingLoop() {
+                if (!this.isStreaming) return;
+                
+                // Process real audio data from QDX
+                this.processRealTimeAudio();
+                
+                // Update displays
+                this.updateSpectrumDisplay();
+                this.updateWaterfallDisplay();
+                this.updateAudioLevelMeter();
+                
+                // Continue loop
+                this.animationFrame = requestAnimationFrame(() => this.startAudioProcessingLoop());
+            }
+
+            processRealTimeAudio() {
+                // This now processes real audio data from the selected audio device
+                // No simulation needed - we're getting actual audio from QDX via system audio
+            }
+
+            updateSpectrumDisplay() {
+                if (!this.analyser) return;
+                
+                const canvas = this.fftCanvas;
+                const ctx = this.fftCtx;
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                // Get frequency data
+                const freqData = new Uint8Array(this.analyser.frequencyBinCount);
+                this.analyser.getByteFrequencyData(freqData);
+                
+                // Clear canvas
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, width, height);
+                
+                // Draw spectrum
+                const binWidth = width / freqData.length;
+                ctx.fillStyle = '#ff6b35';
+                
+                for (let i = 0; i < freqData.length; i++) {
+                    const barHeight = (freqData[i] / 255) * height;
+                    const x = i * binWidth;
+                    const y = height - barHeight;
+                    
+                    // Create gradient for bars
+                    const gradient = ctx.createLinearGradient(0, y, 0, height);
+                    gradient.addColorStop(0, '#ff6b35');
+                    gradient.addColorStop(0.5, '#f7931e');
+                    gradient.addColorStop(1, '#ffff00');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(x, y, binWidth - 1, barHeight);
+                }
+                
+                // Draw frequency scale
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px monospace';
+                const nyquist = this.sampleRate / 2;
+                const step = width / 5;
+                
+                for (let i = 0; i <= 5; i++) {
+                    const freq = (i / 5) * nyquist;
+                    const x = i * step;
+                    ctx.fillText(`${(freq / 1000).toFixed(1)}k`, x, height - 5);
+                }
+            }
+
+            updateWaterfallDisplay() {
+                if (!this.analyser) return;
+                
+                const canvas = this.waterfallCanvas;
+                const ctx = this.waterfallCtx;
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                // Get frequency data
+                const freqData = new Uint8Array(this.analyser.frequencyBinCount);
+                this.analyser.getByteFrequencyData(freqData);
+                
+                // Shift existing waterfall data down
+                const imageData = ctx.getImageData(0, 0, width, height - this.waterfallSpeed);
+                ctx.putImageData(imageData, 0, this.waterfallSpeed);
+                
+                // Draw new line at top
+                const lineData = ctx.createImageData(width, this.waterfallSpeed);
+                const data = lineData.data;
+                
+                for (let x = 0; x < width; x++) {
+                    const freqIndex = Math.floor((x / width) * freqData.length);
+                    const intensity = freqData[freqIndex];
+                    
+                    // Create color map (blue -> green -> yellow -> red)
+                    let r, g, b;
+                    if (intensity < 64) {
+                        r = 0;
+                        g = 0;
+                        b = intensity * 4;
+                    } else if (intensity < 128) {
+                        r = 0;
+                        g = (intensity - 64) * 4;
+                        b = 255 - (intensity - 64) * 4;
+                    } else if (intensity < 192) {
+                        r = (intensity - 128) * 4;
+                        g = 255;
+                        b = 0;
+                    } else {
+                        r = 255;
+                        g = 255 - (intensity - 192) * 4;
+                        b = 0;
+                    }
+                    
+                    for (let y = 0; y < this.waterfallSpeed; y++) {
+                        const index = (y * width + x) * 4;
+                        data[index] = r;     // Red
+                        data[index + 1] = g; // Green
+                        data[index + 2] = b; // Blue
+                        data[index + 3] = 255; // Alpha
+                    }
+                }
+                
+                ctx.putImageData(lineData, 0, 0);
+            }
+
+            updateAudioLevelMeter() {
+                if (!this.analyser) return;
+                
+                // Get time domain data for level meter
+                const timeData = new Uint8Array(this.analyser.frequencyBinCount);
+                this.analyser.getByteTimeDomainData(timeData);
+                
+                // Calculate RMS level
+                let sum = 0;
+                for (let i = 0; i < timeData.length; i++) {
+                    const sample = (timeData[i] - 128) / 128;
+                    sum += sample * sample;
+                }
+                const rms = Math.sqrt(sum / timeData.length);
+                const level = Math.min(100, rms * 100 * 10); // Scale and limit
+                
+                // Update level meter
+                const levelElement = document.getElementById('audioLevel');
+                levelElement.style.width = `${level}%`;
+            }
+
+            updateAudioStatus(status) {
+                document.getElementById('audioStatus').textContent = status;
+            }
+
+            updateAudioButtons() {
+                const startBtn = document.getElementById('startAudioBtn');
+                const stopBtn = document.getElementById('stopAudioBtn');
+                
+                if (startBtn && stopBtn) {
+                    if (this.isStreaming) {
+                        startBtn.classList.remove('btn-primary');
+                        startBtn.classList.add('btn-secondary');
+                        stopBtn.classList.remove('btn-secondary');
+                        stopBtn.classList.add('btn-danger');
+                    } else {
+                        startBtn.classList.remove('btn-secondary');
+                        startBtn.classList.add('btn-primary');
+                        stopBtn.classList.remove('btn-danger');
+                        stopBtn.classList.add('btn-secondary');
+                    }
+                }
+            }
+
+            cleanup() {
+                this.stopAudioStreaming();
+                if (this.audioContext) {
+                    this.audioContext.close();
+                }
+            }
+        }
+
         class QDXInterface {
             constructor() {
                 this.frequency = 14205000;
@@ -1246,6 +1915,12 @@
                     this.updateTXStatus();
                     this.updateConnectionStatus();
                     this.initTimeSync();
+                    
+                    // Initialize audio processor with proper error handling
+                    setTimeout(() => {
+                        this.audioProcessor = new QDXAudioProcessor(this);
+                        this.logCAT('Audio processor initialized', 'info');
+                    }, 1000);
                     
                     window.addEventListener('blur', () => {
                         if (this.isSignalGenAdjusting) this.stopSignalGenAdjust();
@@ -2378,10 +3053,78 @@
                     tuningKnob.addEventListener('wheel', this.handleTuningWheel.bind(this));
                     tuningKnob.addEventListener('keydown', this.handleTuningKeyboard.bind(this));
                     
+                    // Add hover keyboard control
+                    this.isHoveringTuningKnob = false;
+                    this.boundHandleHoverKeyboard = this.handleHoverKeyboard.bind(this);
+                    
+                    tuningKnob.addEventListener('mouseenter', () => {
+                        this.isHoveringTuningKnob = true;
+                        tuningKnob.style.boxShadow = '0 0 20px rgba(255, 107, 53, 0.6), 0 12px 24px rgba(0, 0, 0, 0.4)';
+                        document.addEventListener('keydown', this.boundHandleHoverKeyboard);
+                        this.logCAT('Tuning knob hover: Use arrow keys to tune', 'info');
+                    });
+                    
+                    tuningKnob.addEventListener('mouseleave', () => {
+                        this.isHoveringTuningKnob = false;
+                        tuningKnob.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.4), inset 0 4px 6px rgba(255, 255, 255, 0.8), inset 0 -4px 6px rgba(0, 0, 0, 0.3)';
+                        document.removeEventListener('keydown', this.boundHandleHoverKeyboard);
+                    });
+                    
                     tuningKnob.setAttribute('aria-valuenow', this.frequency);
-                    console.log('Tuning knob initialized');
+                    console.log('Tuning knob initialized with hover keyboard control');
                 } catch (error) {
                     console.error('Error initializing tuning knob:', error);
+                }
+            }
+
+            handleHoverKeyboard(e) {
+                if (!this.isHoveringTuningKnob) return;
+                
+                // Prevent default behavior for arrow keys
+                if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault();
+                    
+                    let freqDelta = 0;
+                    const currentStep = this.stepSize;
+                    
+                    switch(e.key) {
+                        case 'ArrowLeft':
+                        case 'ArrowDown':
+                            freqDelta = -currentStep;
+                            break;
+                        case 'ArrowRight':
+                        case 'ArrowUp':
+                            freqDelta = currentStep;
+                            break;
+                    }
+                    
+                    if (freqDelta !== 0) {
+                        // Use larger steps if Shift is held
+                        if (e.shiftKey) {
+                            freqDelta *= 10;
+                        }
+                        
+                        // Use even larger steps if Ctrl is held
+                        if (e.ctrlKey) {
+                            freqDelta *= 100;
+                        }
+                        
+                        this.updateFrequency(freqDelta);
+                        
+                        // Update knob rotation
+                        const rotationDelta = (freqDelta / currentStep) * 2;
+                        this.tuningKnobRotation += rotationDelta;
+                        document.getElementById('tuningKnob').style.transform = `rotate(${this.tuningKnobRotation}deg)`;
+                        
+                        // Send frequency immediately
+                        this.sendFrequencyImmediate();
+                        
+                        // Show feedback
+                        const stepText = e.shiftKey ? `${currentStep * 10} Hz` : 
+                                        e.ctrlKey ? `${currentStep * 100} Hz` : 
+                                        `${currentStep} Hz`;
+                        this.logCAT(`Keyboard tune: ${freqDelta > 0 ? '+' : ''}${freqDelta} Hz (${stepText} step)`, 'info');
+                    }
                 }
             }
 
@@ -2662,6 +3405,12 @@
             async disconnectSerial() {
                 try {
                     this.connected = false;
+                    
+                    // Stop audio streaming if active
+                    if (this.audioProcessor && this.audioProcessor.isStreaming) {
+                        await this.audioProcessor.stopAudioStreaming();
+                    }
+                    
                     if (this.connectionCheckTimeout) {
                         clearTimeout(this.connectionCheckTimeout);
                         this.connectionCheckTimeout = null;
@@ -2863,6 +3612,9 @@
             cleanup() {
                 if (this.pollingInterval) clearInterval(this.pollingInterval);
                 if (this.connectionCheckTimeout) clearTimeout(this.connectionCheckTimeout);
+                if (this.audioProcessor) {
+                    this.audioProcessor.cleanup();
+                }
             }
         }
 
