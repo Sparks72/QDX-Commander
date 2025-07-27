@@ -5,6 +5,7 @@ A modern web-based control interface for the QRP Labs QDX Digital Transceiver, p
 ## Screenshots
 
 ![Main Interface](screenshot1.png)
+![Main Interface](screenshot2.png)
 
 
 
