@@ -290,25 +290,6 @@
     box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4);
 }
 
-/* PTT button specific styles */
-#pttBtn {
-    transition: all 0.15s ease;
-    user-select: none;
-}
-
-#pttBtn:active {
-    transform: translateY(2px) scale(0.98);
-    box-shadow: 0 2px 8px rgba(255, 71, 87, 0.6);
-}
-
-#pttBtn.transmitting {
-    animation: pulseTX 1s ease-in-out infinite;
-}
-
-@keyframes pulseTX {
-    0%, 100% { box-shadow: 0 0 20px rgba(255, 71, 87, 0.8); }
-    50% { box-shadow: 0 0 30px rgba(255, 71, 87, 1); }
-}
         .mode-buttons {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -1122,7 +1103,123 @@ body.night-mode-active .fft-canvas {
     filter: saturate(0.6) brightness(0.8);
 }
 
+/* S-Meter Styles */
+.s-meter-container {
+    background: #000;
+    border: 2px solid #ff6b35;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 10px 0;
+}
 
+.s-meter-display {
+    position: relative;
+    height: 60px;
+    background: linear-gradient(to bottom, #1a1a1a, #000);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.s-meter-scale {
+    display: flex;
+    justify-content: space-between;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 15px;
+    font-size: 0.7em;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 2px 5px;
+    z-index: 2;
+}
+
+.s-meter-bar-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 35px;
+    background: #0a0a0a;
+}
+
+.s-meter-bar {
+    height: 100%;
+    transition: width 0.1s ease-out;
+    background: linear-gradient(to right, 
+        #00ff00 0%, 
+        #00ff00 55%, 
+        #ffff00 55%, 
+        #ffff00 77%, 
+        #ff6b35 77%, 
+        #ff0000 100%);
+    box-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+    position: relative;
+    width: 0%;
+}
+
+.s-meter-peak {
+    position: absolute;
+    bottom: 0;
+    width: 3px;
+    height: 35px;
+    background: #ff0000;
+    box-shadow: 0 0 8px #ff0000;
+    transition: left 0.05s ease-out;
+    z-index: 3;
+    left: 0%;
+}
+
+.s-meter-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75em;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 3px;
+    padding: 0 5px;
+}
+
+.s-meter-labels span {
+    flex: 1;
+    text-align: center;
+}
+
+.s-meter-labels span:nth-child(10),
+.s-meter-labels span:nth-child(11),
+.s-meter-labels span:nth-child(12) {
+    color: #ff6b35;
+    font-weight: bold;
+}
+
+.s-meter-readout {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    padding: 5px 10px;
+    background: rgba(255, 107, 53, 0.1);
+    border-radius: 5px;
+}
+
+.s-meter-value {
+    font-family: 'Courier New', monospace;
+    font-size: 1.2em;
+    color: #ff6b35;
+    font-weight: bold;
+}
+
+.s-meter-dbm {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.s-meter-peak-value {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+    color: #ff4757;
+}
 
     </style>
 </head>
@@ -1135,13 +1232,7 @@ body.night-mode-active .fft-canvas {
 <div class="master-container">
         <div class="main-panel">
             <div class="left-panel">
-			<div class="panel" id="txScopePanel">
-    <h3>TX Audio Scope</h3>
-    <canvas class="fft-canvas" id="scopeCanvas" width="400" height="150"></canvas>
-    <div id="clippingIndicator" style="text-align: center; color: #ff4757; font-weight: bold; display: none;">
-        !! CLIPPING !!
-    </div>
-</div>
+			
 			
 			<div class="panel" id="dspPanel">
     <h3>DSP Filter 🎛️</h3>
@@ -1222,14 +1313,7 @@ body.night-mode-active .fft-canvas {
         <button id="stopAudioBtn" class="btn btn-secondary">Stop Audio</button>
     </div>
     
-    <!-- TX Audio Level (always visible during TX) -->
-    <div id="txAudioLevelSection" style="display: none; margin-bottom: 15px; background: rgba(100,0,0,0.1); padding: 10px; border-radius: 8px;">
-        <label style="color: #FF5722; font-weight: bold;">🎤 TX Audio Level</label>
-        <div style="background: #222; border-radius: 5px; height: 20px; position: relative; overflow: hidden;">
-            <div id="txAudioMeter" style="background: linear-gradient(90deg, #4CAF50, #FFC107, #FF5722); height: 100%; width: 0%; transition: width 0.05s;"></div>
-        </div>
-        <div id="txAudioLevelText" style="text-align: center; font-size: 0.8em; color: #ff6b35; margin-top: 5px;">0%</div>
-    </div>
+    
     
     <!-- Collapsible Advanced Settings -->
     <details style="margin-top: 10px;">
@@ -1251,22 +1335,7 @@ body.night-mode-active .fft-canvas {
         </div>
         
         <!-- TX Settings -->
-        <div style="background: rgba(100,0,0,0.1); padding: 10px; border-radius: 8px;">
-            <label style="color: #FF5722; font-weight: bold; font-size: 0.9em;">🎤 TRANSMIT (TX)</label>
-            <div class="control-group">
-                <label style="font-size: 0.85em;">PC Microphone</label>
-                <select id="micInputDevice" style="width:100%; padding: 8px; font-size: 0.9em;"></select>
-            </div>
-            <div class="control-group">
-                <label style="font-size: 0.85em;">TX Output (to QDX)</label>
-                <select id="txAudioOutputDevice" style="width:100%; padding: 8px; font-size: 0.9em;"></select>
-            </div>
-            <div class="control-group">
-                <label style="font-size: 0.85em;">Microphone Gain</label>
-                <input type="range" id="micGainSlider" class="slider" min="0" max="100" value="50">
-                <span id="micGainLevel">50%</span>
-            </div>
-        </div>
+      
     </details>
     
     <!-- Other Settings (collapsed by default) -->
@@ -1331,23 +1400,7 @@ body.night-mode-active .fft-canvas {
 </div>
 			<!-- Add this in the audio panel -->
 <!-- Add this in the audio panel -->
-<details style="margin-top: 10px;">
-    <summary style="cursor: pointer; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 8px;">
-        🎚️ TX Audio Profiles
-    </summary>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
-        <button class="btn btn-primary" onclick="qdxInterface.audioProcessor.setTxProfile('natural')">Natural</button>
-        <button class="btn btn-secondary" onclick="qdxInterface.audioProcessor.setTxProfile('punchy')">Punchy</button>
-        <button class="btn btn-secondary" onclick="qdxInterface.audioProcessor.setTxProfile('broadcast')">Broadcast</button>
-        <button class="btn btn-secondary" onclick="qdxInterface.audioProcessor.setTxProfile('dx')">DX</button>
-    </div>
-    <div style="margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 5px; font-size: 0.8em;">
-        <div><strong>Natural:</strong> Minimal processing, natural voice</div>
-        <div><strong>Punchy:</strong> Enhanced mids, cuts through QRM</div>
-        <div><strong>Broadcast:</strong> Full FM radio style sound</div>
-        <div><strong>DX:</strong> Maximum intelligibility for weak signals</div>
-    </div>
-</details>	
+
 				</div>
 
                 <div class="panel" id="modePanel">
@@ -1409,18 +1462,52 @@ body.night-mode-active .fft-canvas {
                 </div>
 
                 <div class="panel" id="spectrumPanel">
-                    <h3>Spectrum Display</h3>
-                    <canvas class="fft-canvas" id="fftCanvas" width="400" height="150"></canvas>
-                    <div class="control-group">
-                        <label>FFT Size</label>
-                        <select id="fftSize">
-                            <option value="256">256</option>
-                            <option value="512">512</option>
-                            <option value="1024" selected>1024</option>
-                            <option value="2048">2048</option>
-                        </select>
-                    </div>
-                </div>
+    <h3>Spectrum Display</h3>
+    <canvas class="fft-canvas" id="fftCanvas" width="400" height="150"></canvas>
+    
+    <!-- S-Meter -->
+    <div class="s-meter-container">
+        <div class="s-meter-display">
+            <div class="s-meter-scale">
+                <span>S-METER</span>
+                <span id="sMeterMode">RX</span>
+            </div>
+            <div class="s-meter-bar-container">
+                <div class="s-meter-bar" id="sMeterBar"></div>
+                <div class="s-meter-peak" id="sMeterPeak"></div>
+            </div>
+        </div>
+        <div class="s-meter-labels">
+            <span>1</span>
+            <span>2</span>
+            <span>3</span>
+            <span>4</span>
+            <span>5</span>
+            <span>6</span>
+            <span>7</span>
+            <span>8</span>
+            <span>9</span>
+            <span>+20</span>
+            <span>+40</span>
+            <span>+60</span>
+        </div>
+        <div class="s-meter-readout">
+            <div class="s-meter-value" id="sMeterValue">S0</div>
+            <div class="s-meter-dbm" id="sMeterDbm">-127 dBm</div>
+            <div class="s-meter-peak-value" id="sMeterPeakValue">Peak: S0</div>
+        </div>
+    </div>
+    
+    <div class="control-group">
+        <label>FFT Size</label>
+        <select id="fftSize">
+            <option value="256">256</option>
+            <option value="512">512</option>
+            <option value="1024" selected>1024</option>
+            <option value="2048">2048</option>
+        </select>
+    </div>
+</div>
 
                 <div class="panel" id="vfoPanel">
                     <h3>VFO</h3>
@@ -1430,15 +1517,8 @@ body.night-mode-active .fft-canvas {
                     </div>
                 </div>
 
-                <div class="panel" id="transmitPanel">
-                   <h3>Transmit</h3>
-<div style="text-align: center;">
-    <button id="pttBtn" class="btn btn-secondary" style="width: 80%; height: 60px;">
-        PUSH TO TALK
-    </button>
-	<button id="testTxBtn" class="btn btn-secondary">Test TX Command</button>
-</div>
-                </div>
+               
+                
             </div>
 
             <div class="right-panel">
@@ -1691,7 +1771,7 @@ body.night-mode-active .fft-canvas {
     this.agcRatio = 12;
     this.agcAttack = 0.003;
     this.agcRelease = 0.25;
-    this.isTransmitting = false;
+  /*  this.isTransmitting = false;
     this.txStarting = false; // NEW: Prevent rapid PTT triggering
     this.txMicStream = null;
     this.txSourceNode = null;
@@ -1707,8 +1787,14 @@ body.night-mode-active .fft-canvas {
     this.selectedTxOutputId = null; 
     this.currentProfile = 'natural';
     this.wasStreamingBeforeTx = false; // NEW: Track RX state before TX
-    this.preTransmitGain = null; // NEW: Store RX gain before muting
-    
+    this.preTransmitGain = null; // NEW: Store RX gain before muting */
+    // S-Meter properties
+this.sMeterValue = 0;
+this.sMeterPeak = 0;
+this.sMeterPeakDecay = 0;
+this.sMeterSmoothing = 0.7; // Higher = smoother but slower response
+this.sMeterPeakHoldTime = 1000; // ms to hold peak
+this.sMeterLastPeakTime = 0;
     // --- 2. Now, call initialization functions ---
     this.initAudioProcessing();
     this.updateAudioButtons();
@@ -1852,73 +1938,11 @@ body.night-mode-active .fft-canvas {
         }
         
         // 🆕 POPULATE TX AUDIO OUTPUT (to QDX LINE IN)
-        const txOutputSelect = document.getElementById('txAudioOutputDevice');
-        if (txOutputSelect) {
-            txOutputSelect.innerHTML = '<option value="">⚠️ Auto-detect (may fail)</option>';
-            if (this.audioOutputs.length > 0) {
-                this.audioOutputs.forEach((device, index) => {
-                    const option = document.createElement('option');
-                    option.value = device.deviceId;
-                    option.textContent = device.label || `Audio Output ${index + 1}`;
-                    
-                    // Auto-select QDX for TX output
-                    if (device.label && (device.label.toLowerCase().includes('qdx') || 
-                                         device.label.toLowerCase().includes('usb audio'))) {
-                        option.textContent += ' 🎯 (QDX - SELECT THIS!)';
-                        option.selected = true;
-                        this.selectedTxOutputId = device.deviceId; // Store it
-                    }
-                    
-                    txOutputSelect.appendChild(option);
-                });
-            }
-            
-            txOutputSelect.addEventListener('change', (e) => {
-                this.selectedTxOutputId = e.target.value;
-                this.qdxInterface.logCAT(`TX Output set to: ${e.target.options[e.target.selectedIndex].text}`, 'info');
-            });
-        }
+      
+      
         
-        // POPULATE TX MIC INPUT (PC Microphone)
-        const micInputSelect = document.getElementById('micInputDevice');
-        if (micInputSelect) {
-            micInputSelect.innerHTML = '<option value="">Use System Default Input</option>';
-            if (this.audioInputs.length > 0) {
-                this.audioInputs.forEach((device, index) => {
-                    const option = document.createElement('option');
-                    option.value = device.deviceId;
-                    option.textContent = device.label || `Microphone ${index + 1}`;
-                    
-                    if (device.label && !device.label.toLowerCase().includes('qdx') && 
-                        device.label.toLowerCase().includes('microphone')) {
-                        option.textContent += ' 🎤 (Recommended)';
-                        option.selected = true;
-                    }
-                    
-                    micInputSelect.appendChild(option);
-                });
-            }
-            
-            micInputSelect.addEventListener('change', (e) => {
-                this.selectedMicId = e.target.value;
-                this.qdxInterface.logCAT(`TX Microphone set to: ${e.target.options[e.target.selectedIndex].text}`, 'info');
-            });
-        }
-        
+      
 		
-		
-document.getElementById('txAudioOutputDevice').addEventListener('change', async (e) => {
-  this.selectedTxOutputId = e.target.value || null;
-  if (this.txAudioContext && typeof this.txAudioContext.setSinkId === 'function' && this.selectedTxOutputId) {
-    try {
-      await this.txAudioContext.setSinkId(this.selectedTxOutputId);
-      this.qdxInterface.logCAT('TX sink set', 'info');
-    } catch (err) {
-      this.qdxInterface.logCAT(`Failed to set TX sink: ${err.message}`, 'error');
-    }
-  }
-});
-
 
 		
 		
@@ -1930,16 +1954,6 @@ document.getElementById('txAudioOutputDevice').addEventListener('change', async 
 }
 			
 			
-	setTxProfile(profile) {
-        this.currentProfile = profile;
-        this.qdxInterface.logCAT(`TX profile set to: ${profile}`, 'info');
-        
-		
-        // If currently transmitting, apply the profile immediately
-        if (this.isTransmitting) {
-            this.applyTxProfile();
-        }
-    }
 
 
 
@@ -1952,160 +1966,7 @@ document.getElementById('txAudioOutputDevice').addEventListener('change', async 
 
 
 
-    applyTxProfile() {
-        if (!this.txAudioContext) return;
-        
-        // Create or update equalizer nodes
-        if (!this.txEqualizer) {
-            this.txEqualizer = {
-                highpass: this.txAudioContext.createBiquadFilter(),
-                lowshelf: this.txAudioContext.createBiquadFilter(),
-                midPeak1: this.txAudioContext.createBiquadFilter(),
-                midPeak2: this.txAudioContext.createBiquadFilter(),
-                presence: this.txAudioContext.createBiquadFilter(),
-                highshelf: this.txAudioContext.createBiquadFilter(),
-                compressor: this.txAudioContext.createDynamicsCompressor()
-            };
-            
-            // Set filter types
-            this.txEqualizer.highpass.type = 'highpass';
-            this.txEqualizer.lowshelf.type = 'lowshelf';
-            this.txEqualizer.midPeak1.type = 'peaking';
-            this.txEqualizer.midPeak2.type = 'peaking';
-            this.txEqualizer.presence.type = 'peaking';
-            this.txEqualizer.highshelf.type = 'highshelf';
-        }
-        
-        const profile = this.currentProfile || 'natural';
-        
-        switch(profile) {
-            case 'natural':
-                // Natural voice - minimal processing
-                this.txEqualizer.highpass.frequency.value = 80;
-                this.txEqualizer.highpass.Q.value = 0.7;
-                
-                this.txEqualizer.lowshelf.frequency.value = 200;
-                this.txEqualizer.lowshelf.gain.value = 0; // Flat
-                
-                this.txEqualizer.midPeak1.frequency.value = 800;
-                this.txEqualizer.midPeak1.Q.value = 0.7;
-                this.txEqualizer.midPeak1.gain.value = 0; // Flat
-                
-                this.txEqualizer.midPeak2.frequency.value = 1500;
-                this.txEqualizer.midPeak2.Q.value = 0.7;
-                this.txEqualizer.midPeak2.gain.value = 1; // Slight boost
-                
-                this.txEqualizer.presence.frequency.value = 2500;
-                this.txEqualizer.presence.Q.value = 0.7;
-                this.txEqualizer.presence.gain.value = 2; // Clarity
-                
-                this.txEqualizer.highshelf.frequency.value = 3000;
-                this.txEqualizer.highshelf.gain.value = 0; // Flat
-                
-                this.txEqualizer.compressor.threshold.value = -24;
-                this.txEqualizer.compressor.knee.value = 10;
-                this.txEqualizer.compressor.ratio.value = 3;
-                this.txEqualizer.compressor.attack.value = 0.003;
-                this.txEqualizer.compressor.release.value = 0.1;
-                break;
-                
-            case 'punchy':
-                // Punchy - enhanced mids and compression
-                this.txEqualizer.highpass.frequency.value = 100;
-                this.txEqualizer.highpass.Q.value = 0.7;
-                
-                this.txEqualizer.lowshelf.frequency.value = 250;
-                this.txEqualizer.lowshelf.gain.value = 3; // Warmth
-                
-                this.txEqualizer.midPeak1.frequency.value = 600;
-                this.txEqualizer.midPeak1.Q.value = 1.0;
-                this.txEqualizer.midPeak1.gain.value = 4; // Punch
-                
-                this.txEqualizer.midPeak2.frequency.value = 1800;
-                this.txEqualizer.midPeak2.Q.value = 1.5;
-                this.txEqualizer.midPeak2.gain.value = 6; // Presence
-                
-                this.txEqualizer.presence.frequency.value = 2800;
-                this.txEqualizer.presence.Q.value = 1.0;
-                this.txEqualizer.presence.gain.value = 5; // Articulation
-                
-                this.txEqualizer.highshelf.frequency.value = 3500;
-                this.txEqualizer.highshelf.gain.value = 3; // Crisp
-                
-                this.txEqualizer.compressor.threshold.value = -20;
-                this.txEqualizer.compressor.knee.value = 5;
-                this.txEqualizer.compressor.ratio.value = 6;
-                this.txEqualizer.compressor.attack.value = 0.002;
-                this.txEqualizer.compressor.release.value = 0.05;
-                break;
-                
-            case 'broadcast':
-                // Broadcast - professional FM radio style
-                this.txEqualizer.highpass.frequency.value = 120;
-                this.txEqualizer.highpass.Q.value = 0.8;
-                
-                this.txEqualizer.lowshelf.frequency.value = 300;
-                this.txEqualizer.lowshelf.gain.value = 5; // Full bass
-                
-                this.txEqualizer.midPeak1.frequency.value = 700;
-                this.txEqualizer.midPeak1.Q.value = 0.5;
-                this.txEqualizer.midPeak1.gain.value = -2; // Slight cut
-                
-                this.txEqualizer.midPeak2.frequency.value = 2000;
-                this.txEqualizer.midPeak2.Q.value = 1.0;
-                this.txEqualizer.midPeak2.gain.value = 4; // Clarity
-                
-                this.txEqualizer.presence.frequency.value = 4000;
-                this.txEqualizer.presence.Q.value = 0.7;
-                this.txEqualizer.presence.gain.value = 6; // Brightness
-                
-                this.txEqualizer.highshelf.frequency.value = 5000;
-                this.txEqualizer.highshelf.gain.value = 4; // Air
-                
-                this.txEqualizer.compressor.threshold.value = -18;
-                this.txEqualizer.compressor.knee.value = 2;
-                this.txEqualizer.compressor.ratio.value = 8;
-                this.txEqualizer.compressor.attack.value = 0.001;
-                this.txEqualizer.compressor.release.value = 0.04;
-                break;
-                
-            case 'dx':
-                // DX - optimized for weak signal work
-                this.txEqualizer.highpass.frequency.value = 200;
-                this.txEqualizer.highpass.Q.value = 1.0;
-                
-                this.txEqualizer.lowshelf.frequency.value = 400;
-                this.txEqualizer.lowshelf.gain.value = -6; // Cut lows
-                
-                this.txEqualizer.midPeak1.frequency.value = 1000;
-                this.txEqualizer.midPeak1.Q.value = 2.0;
-                this.txEqualizer.midPeak1.gain.value = 3; // Focus
-                
-                this.txEqualizer.midPeak2.frequency.value = 1700;
-                this.txEqualizer.midPeak2.Q.value = 2.5;
-                this.txEqualizer.midPeak2.gain.value = 8; // Maximum intelligibility
-                
-                this.txEqualizer.presence.frequency.value = 2400;
-                this.txEqualizer.presence.Q.value = 2.0;
-                this.txEqualizer.presence.gain.value = 6; // Cut through
-                
-                this.txEqualizer.highshelf.frequency.value = 2800;
-                this.txEqualizer.highshelf.gain.value = -3; // Reduce highs
-                
-                this.txEqualizer.compressor.threshold.value = -16;
-                this.txEqualizer.compressor.knee.value = 0;
-                this.txEqualizer.compressor.ratio.value = 12;
-                this.txEqualizer.compressor.attack.value = 0.001;
-                this.txEqualizer.compressor.release.value = 0.02;
-                break;
-        }
-        
-        this.qdxInterface.logCAT(`Applied ${profile} TX audio profile`, 'info');
-    }
     
-    // Can't change profiles mid-transmission safely
-  //  this.qdxInterface.logCAT(`Stop TX first to change audio profile`, 'error');
-//}		
 			
 			
 			
@@ -2165,73 +2026,6 @@ document.getElementById('txAudioOutputDevice').addEventListener('change', async 
 
 // In the QDXAudioProcessor class
 
-drawTxScope() {
-    if (!this.isTransmitting || !this.txAnalyser) return;
-
-    const ctx = this.scopeCtx;
-    const canvas = this.scopeCanvas;
-    const clippingIndicator = document.getElementById('clippingIndicator');
-    
-    const bufferLength = this.txAnalyser.fftSize;
-    const dataArray = new Uint8Array(bufferLength);
-    this.txAnalyser.getByteTimeDomainData(dataArray);
-
-    // Calculate RMS for meter
-    let sum = 0;
-    for (let i = 0; i < bufferLength; i++) {
-        const normalized = (dataArray[i] - 128) / 128.0;
-        sum += normalized * normalized;
-    }
-    const rms = Math.sqrt(sum / bufferLength);
-    const meterPercent = Math.min(100, rms * 100 * 5);
-    
-    // Update meter
-    const txMeter = document.getElementById('txAudioMeter');
-    const txText = document.getElementById('txAudioLevelText');
-    if (txMeter) txMeter.style.width = `${meterPercent}%`;
-    if (txText) txText.textContent = `${meterPercent.toFixed(0)}%`;
-
-    // Draw waveform
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#ff6b35';
-    ctx.beginPath();
-
-    // Trigger logic
-    let triggerPoint = 0;
-    const triggerLevel = 138;
-    for (let i = 0; i < bufferLength - 1; i++) {
-        if (dataArray[i] < triggerLevel && dataArray[i + 1] >= triggerLevel) {
-            triggerPoint = i;
-            break;
-        }
-    }
-
-    const sliceWidth = canvas.width * 1.0 / bufferLength;
-    let x = 0;
-    let isClipping = false;
-
-    for (let i = 0; i < bufferLength; i++) {
-        const dataIndex = (i + triggerPoint) % bufferLength;
-        const v = dataArray[dataIndex] / 128.0;
-        const y = v * canvas.height / 2;
-
-        if (dataArray[dataIndex] >= 254 || dataArray[dataIndex] <= 1) {
-            isClipping = true;
-        }
-
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-        
-        x += sliceWidth;
-    }
-
-    clippingIndicator.style.display = isClipping ? 'block' : 'none';
-    ctx.stroke();
-}
-
-// end of draw scope
 
 
 
@@ -2268,438 +2062,13 @@ startAudioProcessingLoop() {
 
 
 
-async startTransmission() {
-   
-   // Prevent rapid re-triggering
-   if (this.txStarting) {
-       this.qdxInterface.logCAT('TX already starting, please wait...', 'info');
-       return;
-   }
-
-   if (this.isTransmitting) {
-        this.qdxInterface.logCAT('Already transmitting', 'info');
-        return;
-    }
-   
-   this.txStarting = true;
-   
-   const qdxTxDeviceId = this.selectedTxOutputId || this.findQdxTxDevice();
-    if (!this.qdxInterface.connected) {
-        this.qdxInterface.logCAT('Cannot TX: Radio not connected', 'error');
-        alert('Please connect to the radio first!');
-        this.txStarting = false;
-        return;
-    }
-
-    this.qdxInterface.logCAT('Starting SSB transmission...', 'info');
-    
-    // SAVE RX AUDIO STATE BEFORE MUTING
-    this.wasStreamingBeforeTx = this.isStreaming;
-	
-	
-	
-	
-	
-    // MUTE RX AUDIO FIRST
-    if (this.gainNode) {
-        this.preTransmitGain = this.gainNode.gain.value;
-        this.gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-        this.qdxInterface.logCAT(`RX audio MUTED (was ${(this.preTransmitGain * 100).toFixed(0)}%)`, 'info');
-    }
-    
-    // DISCONNECT RX AUDIO CHAIN
-    try {
-        if (this.sourceNode) this.sourceNode.disconnect();
-        if (this.inputGainNode) this.inputGainNode.disconnect();
-        if (this.dspFilterNode) this.dspFilterNode.disconnect();
-        if (this.agcNode) this.agcNode.disconnect();
-        if (this.analyser) this.analyser.disconnect();
-        this.qdxInterface.logCAT('RX audio chain disconnected', 'info');
-    } catch (e) {
-        this.qdxInterface.logCAT('RX disconnect: ' + e.message, 'info');
-    }
-    
-    try {
-        // Get PC microphone
-        if (!this.txMicStream) {
-            this.qdxInterface.logCAT('Requesting microphone permission...', 'info');
-            
-            const micConstraints = { 
-                audio: { 
-                    deviceId: this.selectedMicId ? { exact: this.selectedMicId } : undefined,
-                    echoCancellation: false,
-                    noiseSuppression: false,
-                    autoGainControl: false,
-                    sampleRate: 48000,
-                    channelCount: 1
-                } 
-            };
-            
-            try {
-                this.txMicStream = await navigator.mediaDevices.getUserMedia(micConstraints);
-                this.qdxInterface.logCAT('✅ Microphone access granted', 'info');
-                
-                // Verify we have audio tracks
-                const audioTracks = this.txMicStream.getAudioTracks();
-                if (audioTracks.length === 0) {
-                    throw new Error('No audio tracks in microphone stream');
-                }
-                this.qdxInterface.logCAT(`Mic: ${audioTracks[0].label}`, 'info');
-                
-            } catch (micError) {
-                this.qdxInterface.logCAT(`❌ Microphone access denied: ${micError.message}`, 'error');
-                if (this.gainNode && this.preTransmitGain !== null) {
-                    this.gainNode.gain.setValueAtTime(this.preTransmitGain, this.audioContext.currentTime);
-                    this.preTransmitGain = null;
-                }
-                return;
-            }
-        }
-        
-       // Create once
-  // Create (or reuse) the TX context
-   if (!this.txAudioContext) {
-     this.txAudioContext = new (window.AudioContext || window.webkitAudioContext)({
-       sampleRate: 48000,
-       latencyHint: 'interactive'
-     });
-   }
-   // Pair with your stopTransmission() suspend — resume if needed
-   if (this.txAudioContext.state === 'suspended') {
-     await this.txAudioContext.resume();
-   }
-
-   // Route TX to chosen device if supported
-   // Route TX to chosen device if supported
-  // Route TX to chosen device if supported (OPTIONAL)
-   if (qdxTxDeviceId && typeof this.txAudioContext.setSinkId === 'function') {
-     try {
-       await this.txAudioContext.setSinkId(qdxTxDeviceId);
-       this.qdxInterface.logCAT('✅ TX audio routed to QDX', 'info');
-     } catch (err) {
-       this.qdxInterface.logCAT(`⚠️ Could not route to QDX device: ${err.message}`, 'error');
-       this.qdxInterface.logCAT('⚠️ TX will use system default audio output', 'info');
-       console.warn('TX routing warning:', err);
-       // Continue anyway - audio will go to default output
-     }
-   } else if (!qdxTxDeviceId) {
-     this.qdxInterface.logCAT('⚠️ No TX output device selected - using system default', 'info');
-     this.qdxInterface.logCAT('💡 TIP: Select QDX in "TX Output (to QDX)" dropdown for automatic routing', 'info');
-     // Continue anyway - audio will go to default output
-   } else if (!this.txAudioContext.setSinkId) {
-     this.qdxInterface.logCAT('⚠️ Browser does not support audio routing - using system default', 'info');
-     this.qdxInterface.logCAT('💡 TIP: Manually route audio in your OS sound settings', 'info');
-     // Continue anyway - audio will go to default output
-   }
-       
-   //-----------------------------------------------     
-        if (this.txAudioContext.state === 'suspended') {
-            await this.txAudioContext.resume();
-        }
-
-        this.qdxInterface.logCAT('Building TX audio chain...', 'info');
-
-        // Create TX analyser for monitoring
-        if (!this.txAnalyser) {
-            this.txAnalyser = this.txAudioContext.createAnalyser();
-            this.txAnalyser.fftSize = 2048;
-        }
-
-        // Create source from microphone
-        this.txSourceNode = this.txAudioContext.createMediaStreamSource(this.txMicStream);
-        this.qdxInterface.logCAT('✅ Mic source node created', 'info');
-        
-        // INPUT GAIN (adjustable)
-        this.txGainNode = this.txAudioContext.createGain();
-        const micGainPercent = document.getElementById('micGainSlider').value / 100;
-        this.txGainNode.gain.value = micGainPercent * 4.0; // Increased from 6.0 to provide more headroom
-        this.qdxInterface.logCAT(`Mic gain: ${(micGainPercent * 100).toFixed(0)}% (${this.txGainNode.gain.value.toFixed(2)}x)`, 'info');
-        
-           // Apply the selected TX audio profile (creates sophisticated 6-band EQ + compressor)
-        this.applyTxProfile();
-
-      // PRE-MODULATION GAIN (to ensure strong signal before SSB processing)
-        const preModGain = this.txAudioContext.createGain();
-        preModGain.gain.value = 2.0; // Boost before modulation
-        this.qdxInterface.logCAT('Pre-modulation gain: 2.0x', 'info');
-
-        // SIMPLIFIED SSB GENERATOR (using phase shift method)
-        const ssbProcessor = this.txAudioContext.createScriptProcessor(4096, 1, 2);
-        
-        // Hilbert transform coefficients (simplified)
-        const HILBERT_LENGTH = 65;
-        this.hilbertCoeffs = new Float32Array(HILBERT_LENGTH);
-        const center = Math.floor(HILBERT_LENGTH / 2);
-        
-        for (let i = 0; i < HILBERT_LENGTH; i++) {
-            const n = i - center;
-            if (n === 0) {
-                this.hilbertCoeffs[i] = 0;
-            } else if (n % 2 === 0) {
-                this.hilbertCoeffs[i] = 0;
-            } else {
-                this.hilbertCoeffs[i] = 2.0 / (Math.PI * n);
-            }
-        }
-        
-        // Delay buffer for Hilbert transform
-        this.delayBuffer = new Float32Array(HILBERT_LENGTH);
-        this.delayIndex = 0;
-        this.txPhase = 0.0;
-        
-        let sampleCount = 0; // For debugging
-        
-        ssbProcessor.onaudioprocess = (e) => {
-            const input = e.inputBuffer.getChannelData(0);
-            const outputLeft = e.outputBuffer.getChannelData(0);
-            const outputRight = e.outputBuffer.getChannelData(1);
-            
-            const carrierFreq = 1500; // 1500 Hz carrier
-            const sampleRate = this.txAudioContext.sampleRate;
-            const mode = this.qdxInterface.mode;
-            const sideband = (mode === 'USB') ? 1.0 : -1.0;
-            
-            for (let i = 0; i < input.length; i++) {
-                const sample = input[i];
-                
-                // Apply Hilbert transform
-                this.delayBuffer[this.delayIndex] = sample;
-                
-                let hilbertOut = 0;
-                for (let j = 0; j < HILBERT_LENGTH; j++) {
-                    const bufferIdx = (this.delayIndex + j) % HILBERT_LENGTH;
-                    hilbertOut += this.delayBuffer[bufferIdx] * this.hilbertCoeffs[j];
-                }
-                
-                this.delayIndex = (this.delayIndex + 1) % HILBERT_LENGTH;
-                
-                // Get delayed sample for I channel
-                const delayedSample = this.delayBuffer[(this.delayIndex + Math.floor(HILBERT_LENGTH / 2)) % HILBERT_LENGTH];
-                
-                // Generate carrier
-                const phase = 2.0 * Math.PI * carrierFreq * (this.txPhase / sampleRate);
-                const cosCarrier = Math.cos(phase);
-                const sinCarrier = Math.sin(phase);
-                
-                // SSB modulation: I*cos - Q*sin (USB) or I*cos + Q*sin (LSB)
-                const output = (delayedSample * cosCarrier) - (hilbertOut * sinCarrier * sideband);
-                
-                // Output to both channels (QDX expects mono, but we send to both)
-                outputLeft[i] = output;
-                outputRight[i] = output;
-                
-                this.txPhase = (this.txPhase + 1) % sampleRate;
-            }
-            
-            // Log every 1000 buffers (~10 seconds at 48kHz)
-            sampleCount++;
-            if (sampleCount % 1000 === 0) {
-                const rms = Math.sqrt(input.reduce((sum, val) => sum + val * val, 0) / input.length);
-                this.qdxInterface.logCAT(`TX audio level: ${(rms * 100).toFixed(1)}%`, 'info');
-            }
-        };
-
-        // Output gain (final level control)
-        this.txOutputGain = this.txAudioContext.createGain();
-        this.txOutputGain.gain.value = 1.5; // Reduced from 2.0 to prevent clipping
-        this.qdxInterface.logCAT('TX output gain: 1.5x', 'info');
-
-        // CONNECT THE TX CHAIN
-       // CONNECT THE TX CHAIN (using profile-based EQ)
-        this.txSourceNode.connect(this.txGainNode);
-        this.txGainNode.connect(this.txEqualizer.highpass);
-        this.txEqualizer.highpass.connect(this.txEqualizer.lowshelf);
-        this.txEqualizer.lowshelf.connect(this.txEqualizer.midPeak1);
-        this.txEqualizer.midPeak1.connect(this.txEqualizer.midPeak2);
-        this.txEqualizer.midPeak2.connect(this.txEqualizer.presence);
-        this.txEqualizer.presence.connect(this.txEqualizer.highshelf);
-        this.txEqualizer.highshelf.connect(this.txEqualizer.compressor);
-        this.txEqualizer.compressor.connect(preModGain);
-        preModGain.connect(ssbProcessor);
-        ssbProcessor.connect(this.txOutputGain);
-        this.txOutputGain.connect(this.txAnalyser);
-        this.txAnalyser.connect(this.txAudioContext.destination); // → QDX USB Audio
-        
-        this.qdxInterface.logCAT('✅ TX audio chain connected', 'info');
-        
-     // Set transmitting state
-        this.isTransmitting = true;
-        this.qdxInterface.transmitting = true;
-        this.qdxInterface.updateTXStatus();
-        
-        // Show TX audio meter
-        const txSection = document.getElementById('txAudioLevelSection');
-        if (txSection) txSection.style.display = 'block';
-        
-        // Tell radio to TX
-        if (this.qdxInterface.connected) {
-            await this.qdxInterface.sendCommand('TX');
-            this.qdxInterface.logCAT('✅ Radio switched to TRANSMIT', 'info');
-        }
-        
-        // Start audio processing loop (will now show TX scope)
-        if (!this.animationFrame) {
-            this.startAudioProcessingLoop();
-        }
-        
-        this.txStarting = false;
-
-    } catch (err) {
-        this.qdxInterface.logCAT(`❌ TX Audio Error: ${err.message}`, 'error');
-        console.error('Full TX error:', err);
-        this.txStarting = false;
-        this.stopTransmission();
-    }
-}
-
 
 
 //end of start transmission
 
 
 
-findQdxTxDevice() {
-    this.qdxInterface.logCAT('Searching for QDX TX device...', 'info');
-    
-    // Look for QDX device in outputs (for sending TX audio)
-    for (const device of this.audioOutputs) {
-        const label = device.label.toLowerCase();
-        this.qdxInterface.logCAT(`Found output: "${device.label}"`, 'info');
-        
-        if (label.includes('qdx') || 
-            label.includes('usb audio codec') ||
-            label.includes('usb audio device')) {
-            this.qdxInterface.logCAT(`✅ Auto-detected QDX TX device: ${device.label}`, 'info');
-            return device.deviceId;
-        }
-    }
-    
-    this.qdxInterface.logCAT('❌ Could not auto-detect QDX TX device', 'error');
-    this.qdxInterface.logCAT('Available outputs: ' + this.audioOutputs.map(d => d.label).join(', '), 'info');
-    return null;
-}
 
-
-
-// Don't forget to add this helper function to the QDXAudioProcessor class
-generateHilbertCoefficients(length) {
-    const coeffs = new Array(length);
-    const center = Math.floor(length / 2);
-    
-    for (let i = 0; i < length; i++) {
-        const n = i - center;
-        if (n === 0) {
-            coeffs[i] = 0;
-        } else if (n % 2 === 0) {
-            coeffs[i] = 0;
-        } else {
-            coeffs[i] = (2.0 / (Math.PI * n)) * (1 - Math.cos(Math.PI * n));
-        }
-    }
-    
-    return coeffs;
-}
-stopTransmission() {
-    if (!this.isTransmitting) return;
-
-    this.qdxInterface.logCAT('Stopping SSB transmission', 'info');
-
-    // Hide TX audio meter
-    const txSection = document.getElementById('txAudioLevelSection');
-    if (txSection) txSection.style.display = 'none';
-
-    // --- 1) Flip state & UI immediately to avoid races
-    this.isTransmitting = false;
-    this.qdxInterface.transmitting = false;
-    this.qdxInterface.updateTXStatus();
-
-    // Tell radio to RX (fire-and-forget)
-    if (this.qdxInterface.connected) {
-        try { this.qdxInterface.sendCommand('RX'); } catch {}
-        this.qdxInterface.logCAT('Radio switched to RECEIVE', 'info');
-    }
-
-    // --- 2) Tear down TX graph safely
-    const safeDisconnect = (node) => { try { node && node.disconnect(); } catch {} };
-
-    safeDisconnect(this.txSourceNode);
-    safeDisconnect(this.txGainNode);
-    if (this.txEqualizer) {
-        safeDisconnect(this.txEqualizer.highpass);
-        safeDisconnect(this.txEqualizer.lowshelf);
-        safeDisconnect(this.txEqualizer.midPeak1);
-        safeDisconnect(this.txEqualizer.midPeak2);
-        safeDisconnect(this.txEqualizer.presence);
-        safeDisconnect(this.txEqualizer.highshelf);
-        safeDisconnect(this.txEqualizer.compressor);
-    }
-    safeDisconnect(this.txOutputGain);
-    safeDisconnect(this.txAnalyser);
-    safeDisconnect(this.hilbertProcessor);
-
-    // Suspend TX context
-    (async () => {
-        try {
-            if (this.txAudioContext?.state === 'running') {
-                await this.txAudioContext.suspend();
-                this.qdxInterface.logCAT('TX audio context suspended', 'info');
-            }
-        } catch (e) {
-            this.qdxInterface.logCAT('TX context suspend error: ' + e.message, 'error');
-        }
-    })();
-
-    // --- 3) Restore RX chain and gain
-    setTimeout(() => {
-        try {
-            // Restore RX gain if we muted it on TX start
-            if (this.gainNode && this.preTransmitGain != null) {
-                this.gainNode.gain.setValueAtTime(this.preTransmitGain, this.audioContext.currentTime);
-                this.qdxInterface.logCAT(`RX audio RESTORED to ${(this.preTransmitGain * 100).toFixed(0)}%`, 'info');
-                this.preTransmitGain = null;
-            }
-
-            // ONLY reconnect RX if we were streaming before TX
-            if (this.wasStreamingBeforeTx && this.sourceNode && this.inputGainNode && 
-                this.dspFilterNode && this.analyser && this.gainNode) {
-                
-                this.qdxInterface.logCAT('Reconnecting RX audio chain...', 'info');
-
-                // Ensure everything is disconnected once
-                safeDisconnect(this.sourceNode);
-                safeDisconnect(this.inputGainNode);
-                safeDisconnect(this.dspFilterNode);
-                if (this.agcNode) safeDisconnect(this.agcNode);
-                safeDisconnect(this.analyser);
-                safeDisconnect(this.gainNode);
-
-                // Rebuild RX: source → inputGain → dspFilter → (agc?) → analyser → gain → speakers
-                let n = this.sourceNode;
-                n.connect(this.inputGainNode);
-                n = this.inputGainNode;
-                n.connect(this.dspFilterNode);
-                n = this.dspFilterNode;
-
-                if (this.agcNode) { n.connect(this.agcNode); n = this.agcNode; }
-
-                n.connect(this.analyser);
-                this.analyser.connect(this.gainNode);
-                this.gainNode.connect(this.audioContext.destination);
-                
-                this.qdxInterface.logCAT('RX audio chain reconnected', 'info');
-            } else {
-                this.qdxInterface.logCAT('RX was not streaming before TX, not reconnecting', 'info');
-            }
-
-            // Keep the UI loop running
-            if ((this.isStreaming || this.qdxInterface.connected) && !this.animationFrame) {
-                this.startAudioProcessingLoop();
-            }
-        } catch (e) {
-            this.qdxInterface.logCAT('RX reconnect error: ' + e.message, 'error');
-        }
-    }, 100);
-}
 
 
 
@@ -2744,26 +2113,27 @@ stopTransmission() {
         ctx.fillRect(x, 0, width / freqData.length, this.waterfallSpeed);
     }
 }
-               updateAudioLevelMeter() {
-                if (!this.analyser) return;
-                
-                const timeData = new Uint8Array(this.analyser.frequencyBinCount);
-                this.analyser.getByteTimeDomainData(timeData);
-                
-                let sum = 0;
-                for (let i = 0; i < timeData.length; i++) {
-                    const sample = (timeData[i] - 128) / 128;
-                    sum += sample * sample;
-                }
-                const rms = Math.sqrt(sum / timeData.length);
-                const level = Math.min(100, rms * 100 * 10);
-                
-                const levelElement = document.getElementById('audioLevel');
-                levelElement.style.width = `${level}%`;
-				 // UPDATE AGC METER
+             updateAudioLevelMeter() {
+    if (!this.analyser) return;
+    
+    const timeData = new Uint8Array(this.analyser.frequencyBinCount);
+    this.analyser.getByteTimeDomainData(timeData);
+    
+    let sum = 0;
+    for (let i = 0; i < timeData.length; i++) {
+        const sample = (timeData[i] - 128) / 128;
+        sum += sample * sample;
+    }
+    const rms = Math.sqrt(sum / timeData.length);
+    const level = Math.min(100, rms * 100 * 10);
+    
+    const levelElement = document.getElementById('audioLevel');
+    levelElement.style.width = `${level}%`;
+    
+    // UPDATE AGC METER
     if (this.agcNode && this.agcEnabled) {
-        const reduction = this.agcNode.reduction; // negative dB value
-        const reductionPercent = Math.min(100, Math.abs(reduction) * 5); // Scale for display
+        const reduction = this.agcNode.reduction;
+        const reductionPercent = Math.min(100, Math.abs(reduction) * 5);
         const meterElement = document.getElementById('agcReductionMeter');
         const textElement = document.getElementById('agcReductionText');
         
@@ -2775,8 +2145,140 @@ stopTransmission() {
         }
     }
 
-                // ✅ That's it! No meter updates needed
-            }
+    // Update S-Meter
+    this.updateSMeter();
+}
+
+updateSMeter() {
+    if (!this.analyser) return;
+    
+    // Get frequency domain data
+    const freqData = new Uint8Array(this.analyser.frequencyBinCount);
+    this.analyser.getByteFrequencyData(freqData);
+    
+    // Focus on voice frequency range (300 Hz - 3000 Hz)
+    const sampleRate = this.audioContext.sampleRate;
+    const fftSize = this.analyser.fftSize;
+    const freqPerBin = sampleRate / fftSize;
+    
+    const minBin = Math.floor(300 / freqPerBin);
+    const maxBin = Math.ceil(3000 / freqPerBin);
+    
+    // Find the peak power in voice range (not average)
+    let maxPower = 0;
+    for (let i = minBin; i < maxBin && i < freqData.length; i++) {
+        if (freqData[i] > maxPower) {
+            maxPower = freqData[i];
+        }
+    }
+    
+    // Convert to dBFS (0-255 scale to dB)
+    // Apply more realistic scaling
+    const dbfs = maxPower > 0 ? 20 * Math.log10(maxPower / 255) : -100;
+    
+    // Convert dBFS to approximate dBm with adjusted calibration
+    // This is calibrated to match typical S-meter behavior
+    const dbm = dbfs - 100; // Much more conservative offset
+    
+    // Convert dBm to S-units
+    // S9 = -73 dBm, each S-unit = 6 dB
+    let sValue;
+    let sUnit;
+    
+    if (dbm <= -127) {
+        sValue = 0;
+        sUnit = 'S0';
+    } else if (dbm >= -73) {
+        // Above S9, show as S9+XX dB
+        const overS9 = dbm + 73;
+        sValue = 9 + (overS9 / 60) * 3;
+        if (overS9 < 10) {
+            sUnit = `S9+${Math.round(overS9)}`;
+        } else {
+            sUnit = `S9+${Math.round(overS9 / 10) * 10}`;
+        }
+    } else {
+        // S1 to S9 range
+        sValue = 1 + (dbm + 121) / 6;
+        sValue = Math.max(0, Math.min(9, sValue));
+        sUnit = `S${Math.floor(sValue)}`;
+    }
+    
+    // Apply smoothing with faster response
+    this.sMeterValue = (this.sMeterSmoothing * this.sMeterValue) + 
+                       ((1 - this.sMeterSmoothing) * sValue);
+    
+    // Update peak with hold
+    const now = Date.now();
+    if (this.sMeterValue > this.sMeterPeak || 
+        (now - this.sMeterLastPeakTime) > this.sMeterPeakHoldTime) {
+        if (this.sMeterValue > this.sMeterPeak) {
+            this.sMeterPeak = this.sMeterValue;
+            this.sMeterLastPeakTime = now;
+        } else {
+            // Decay peak slowly
+            this.sMeterPeak = Math.max(this.sMeterValue, this.sMeterPeak - 0.05);
+        }
+    }
+    
+    // Update display
+    this.updateSMeterDisplay(this.sMeterValue, sUnit, dbm);
+}
+
+
+
+updateSMeterDisplay(sValue, sUnit, dbm) {
+    // Update bar width (0-12 range maps to 0-100%)
+    const barWidth = Math.min(100, (sValue / 12) * 100);
+    const sMeterBar = document.getElementById('sMeterBar');
+    if (sMeterBar) {
+        sMeterBar.style.width = `${barWidth}%`;
+    }
+    
+    // Update peak indicator
+    const peakWidth = Math.min(100, (this.sMeterPeak / 12) * 100);
+    const sMeterPeak = document.getElementById('sMeterPeak');
+    if (sMeterPeak) {
+        sMeterPeak.style.left = `${peakWidth}%`;
+    }
+    
+    // Update text displays
+    const sMeterValue = document.getElementById('sMeterValue');
+    if (sMeterValue) {
+        sMeterValue.textContent = sUnit;
+    }
+    
+    const sMeterDbm = document.getElementById('sMeterDbm');
+    if (sMeterDbm) {
+        sMeterDbm.textContent = `${dbm.toFixed(0)} dBm`;
+    }
+    
+    // Update peak value display
+    const peakDbm = -121 + (this.sMeterPeak - 1) * 6;
+    let peakUnit;
+    if (this.sMeterPeak < 1) {
+        peakUnit = 'S0';
+    } else if (this.sMeterPeak <= 9) {
+        peakUnit = `S${Math.floor(this.sMeterPeak)}`;
+    } else {
+        const overS9 = (this.sMeterPeak - 9) * 20;
+        peakUnit = `S9+${Math.round(overS9)}`;
+    }
+    
+    const sMeterPeakValue = document.getElementById('sMeterPeakValue');
+    if (sMeterPeakValue) {
+        sMeterPeakValue.textContent = `Peak: ${peakUnit}`;
+    }
+    
+    // Update mode indicator (RX/TX)
+    const sMeterMode = document.getElementById('sMeterMode');
+    if (sMeterMode) {
+        sMeterMode.textContent = this.isTransmitting ? 'TX' : 'RX';
+        sMeterMode.style.color = this.isTransmitting ? '#ff4757' : '#4CAF50';
+    }
+}
+
+
 
            
             updateAudioStatus(status) {
@@ -3638,104 +3140,7 @@ setAgcSpeed(attack, release) {
     });
 	
 	
-	
-	
-if (this._pttWired) return;
-this._pttWired = true;
-
-const pttBtn = document.getElementById('pttBtn');
-
-// Press to transmit
-pttBtn.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    if (!this.audioProcessor.isTransmitting && this.connected) {
-        this.audioProcessor.startTransmission();
-    }
-});
-
-// Release to stop (inside button)
-pttBtn.addEventListener('mouseup', (e) => {
-    e.preventDefault();
-    if (this.audioProcessor.isTransmitting) {
-        this.audioProcessor.stopTransmission();
-    }
-});
-
-// Stop transmission if mouse leaves button while pressed
-pttBtn.addEventListener('mouseleave', () => {
-    if (this.audioProcessor.isTransmitting) {
-        this.audioProcessor.stopTransmission();
-    }
-});
-
-// Also handle touch events for mobile/tablet
-pttBtn.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    if (!this.audioProcessor.isTransmitting && this.connected) {
-        this.audioProcessor.startTransmission();
-    }
-});
-
-pttBtn.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    if (this.audioProcessor.isTransmitting) {
-        this.audioProcessor.stopTransmission();
-    }
-});
-
-// Stop transmission if touch leaves button
-pttBtn.addEventListener('touchcancel', () => {
-    if (this.audioProcessor.isTransmitting) {
-        this.audioProcessor.stopTransmission();
-    }
-});
-
-// Keyboard PTT support (Space bar)
-let spaceBarPressed = false;
-document.addEventListener('keydown', (e) => {
-    // Only trigger if space bar is pressed and not already transmitting
-    // Also ignore if user is typing in an input field
-    if (e.code === 'Space' && !spaceBarPressed && this.connected && 
-        !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
-        e.preventDefault();
-        spaceBarPressed = true;
-        if (!this.audioProcessor.isTransmitting) {
-            this.audioProcessor.startTransmission();
-            this.logCAT('⌨️ Keyboard PTT activated (Space bar)', 'info');
-        }
-    }
-});
-
-document.addEventListener('keyup', (e) => {
-    if (e.code === 'Space' && spaceBarPressed) {
-        e.preventDefault();
-        spaceBarPressed = false;
-        if (this.audioProcessor.isTransmitting) {
-            this.audioProcessor.stopTransmission();
-            this.logCAT('⌨️ Keyboard PTT released', 'info');
-        }
-    }
-});
-
-    document.getElementById('micInputDevice').addEventListener('change', (e) => {
-        this.audioProcessor.selectedMicId = e.target.value;
-    });
-
-  document.getElementById('micGainSlider').addEventListener('input', (e) => {
-    const gainPercentage = e.target.value;
-    const gainValue = (gainPercentage / 100) * 6.0; // Changed from 2.0 to 6.0
-    
-    document.getElementById('micGainLevel').textContent = `${gainPercentage}%`;
-    if (this.audioProcessor.txGainNode) {
-        // Smooth gain changes to avoid clicks
-        this.audioProcessor.txGainNode.gain.setTargetAtTime(
-            gainValue, 
-            this.audioProcessor.audioContext.currentTime, 
-            0.01
-        );
-    }
-});
-    // --- END OF BLOCK ---
+// --- END OF BLOCK ---
 	
 	// Add to initEventListeners() function
 
@@ -3850,27 +3255,7 @@ document.getElementById('agcPreset').addEventListener('change', (e) => {
             }
 
  updateTXStatus() {
-    const pttBtn = document.getElementById('pttBtn');
-    if (!pttBtn) return;
-
-    if (this.transmitting) {
-        pttBtn.classList.remove('btn-secondary');
-        pttBtn.classList.add('btn-danger', 'transmitting');
-        pttBtn.textContent = '🔴 TRANSMITTING';
-        pttBtn.style.background = 'linear-gradient(45deg, #ff4757, #ff3838)';
-        pttBtn.style.cursor = 'not-allowed';
-        pttBtn.title = 'Release to stop transmitting';
-    } else {
-        pttBtn.classList.remove('btn-danger', 'transmitting');
-        pttBtn.classList.add('btn-secondary');
-        pttBtn.textContent = this.connected ? '🎤 PUSH TO TALK' : '⚠️ CONNECT RADIO';
-        pttBtn.style.background = '';
-        pttBtn.style.cursor = this.connected ? 'pointer' : 'not-allowed';
-        pttBtn.disabled = !this.connected;
-        pttBtn.title = this.connected ? 
-            'Hold to transmit (Space bar or click and hold)\nRX audio will be muted during TX' : 
-            'Connect radio first to transmit';
-    }
+    
 }
 
             updateModeFromCAT(catMode) {
@@ -5480,29 +4865,6 @@ updateNightModeUI() {
         status.style.color = '#fff';
     }
 }
-/*async sendNightModeCommand() {
-    if (!this.connected) return;
-    try {
-        // Inverted Logic: ON sends QI0, OFF sends QI1
-        const command = this.nightModeEnabled ? 'QI0' : 'QI1';
-        await this.sendCommand(command);
-        this.logCAT(`Night Mode command sent: ${command}`, 'info');
-    } catch (e) {
-        this.logCAT(`Night Mode command error: ${e.message}`, 'error');
-    }
-}*/
-
-// In the QDXInterface class
-/* toggleTransmission() {
-    this.logCAT('PTT button clicked', 'info');
-    
-    if (this.audioProcessor.isTransmitting) {
-        this.audioProcessor.stopTransmission();
-    } else {
-        this.audioProcessor.startTransmission();
-    }
-}*/
-// Add this new function to the QDXAudioProcessor class
 
             cleanup() {
                 if (this.pollingInterval) clearInterval(this.pollingInterval);
